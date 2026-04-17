@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-panel: #222222;
+  --color-bg-app: #161616;
+  --color-bg-waveform: #0f0f0f;
+  --color-accent: #3a8dff;
+  --color-danger: #e24c4c;
+  --color-text-main: #e0e0e0;
+  --color-text-muted: #959595;
+  --color-border-main: #333333;
+  --font-sans: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+}
+
+:root {
+  background-color: var(--color-bg-app);
+  color: var(--color-text-main);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Range Input Styling for Geometric Balance */
+input[type="range"] {
+  appearance: none;
+  background: #444;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3a8dff;
+  cursor: pointer;
+  border: none;
+}

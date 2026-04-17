@@ -1,59 +1,55 @@
-# SilenceX by US - Setup & Installation Guide
+# SilenceX Pro - Standalone Software Guide
 
-This guide will walk you through setting up **SilenceX** so it runs like a professional standalone application (similar to AutoCut), either as a floating window or an external browser-linked tool.
-
----
-
-## 1. Prerequisites
-*   **Adobe Premiere Pro 2023 / 2024 / 2025**.
-*   **Node.js** (v18+).
-*   **FFmpeg** (Must be in your System PATH).
+SilenceX is now structured as professional standalone software that communicates with Adobe Premiere Pro using a **WebSocket Logic Bridge**. This allows the UI to run perfectly in a high-performance browser window while still controlling the Premiere timeline.
 
 ---
 
-## 2. Global Setup (Mandatory)
-Adobe requires the **PlayerDebugMode** to be enabled to load custom plugins like SilenceX.
-
-### Windows:
-1.  Open **Command Prompt** (Run as Admin).
-2.  Run: `reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f`
+## 1. How it Works (The Pro Workflow)
+1.  **Backend Server**: Runs on your computer (`server.ts`).
+2.  **Logic Bridge**: Connects any browser window (The "Software") to Premiere Pro.
+3.  **CEP Proxy**: A small invisible extension inside Premiere that receives commands from the Software and executes the cuts.
 
 ---
 
-## 3. Installation (Modern Workflow)
-1.  Navigate to Adobe's extension folder:
-    *   **Windows**: `%AppData%\Adobe\CEP\extensions\`
-    *   **Mac**: `~/Library/Application Support/Adobe/CEP/extensions/`
-2.  Create a folder named `com.us.silencex`.
-3.  Copy all project files into this folder.
+## 2. Installation Steps
+
+### Step A: Setup Premiere Pro
+1.  Copy the `com.us.silencex` folder to `%AppData%\Adobe\CEP\extensions\`.
+2.  **Enable Debug Mode**: Run this in CMD as Admin:
+    `reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f`
+3.  Restart Premiere Pro.
+
+### Step B: Launch the Software
+1.  Navigate to your SilenceX folder.
+2.  Double-click **`START_SILENCEX.bat`**. This will check for Node.js/FFmpeg and start the engine.
+3.  Once the terminal says "Server running", open your browser to:
+    `http://localhost:3000`
 
 ---
 
-## 4. How to use as a "Separate App Window" (AutoCut Style)
-If the panel is trapped inside Premiere or showing a blank screen, follow these steps to get the "External App" experience:
-
-### Step A: Start the Backend
-Open a terminal in the plugin folder and run:
-```bash
-npm install
-npm run dev
-```
-
-### Step B: The Standalone Interface
-You have two ways to view SilenceX like a separate app:
-
-1.  **Floating CEP Window**: In Premiere, go to **Window > Extensions > SilenceX**. Once open, **Right-Click the Panel Tab** and select **"Undock Panel"**. You can now move SilenceX to a second monitor or keep it floating above Premiere like a standalone application.
-2.  **Browser Mode (Best for UI)**: Open your browser (Chrome/Edge) and go to `http://localhost:3000`. You will see the full Frosted Glass UI. 
-    *   *Note: Actions involving the Premiere timeline (Auto-Cut) must be triggered from the actual Extension panel inside Premiere.*
+## 3. Connecting to Premiere
+*   Open Premiere Pro.
+*   Go to **Window > Extensions > SilenceX**. 
+*   *Note: Even if the panel looks blank inside Premiere, its "Heart" (the bridge) is now beating. It will automatically connect to the Standalone Software running in your browser.*
+*   Now, when you click **"Scan Silence"** or **"Auto-Cut"** in your browser window, Premiere will execute the commands instantly.
 
 ---
 
-## 5. Troubleshooting: Why is my panel blank?
-*   **Build Required**: If you are not running `npm run dev`, Premiere won't find the app. If you want to use it without a terminal, run `npm run build` and ensure your `manifest.xml` is configured to point to the `dist` folder.
-*   **Restart Premiere**: Premiere Pro only scans for new extensions on startup. Close and re-open Premiere completely.
-*   **Registry Check**: Double-check that `CSXS.11` (for PPRO 2023+) PlayerDebugMode is set to `1`.
-*   **Firewall**: Ensure your firewall isn't blocking Port 3000.
+## 4. Troubleshooting FFmpeg
+If the scan fails, ensure `ffmpeg` is globally accessible.
+1.  Open CMD and type `ffmpeg -version`.
+2.  If it returns an error, download FFmpeg from `ffmpeg.org`, extract it, and add the `bin` folder to your **System Environment Variables (PATH)**.
 
 ---
 
-*Professional Tool by Umar S.*
+## 5. Build as a Standing Software (.exe)
+You can now package SilenceX as a professional `.exe` file that starts both the backend and UI in one click.
+
+1.  Open your terminal in the project folder.
+2.  Run: `npm run dist`
+3.  Wait for the build to complete. Your professional installer will be located in the `dist` folder.
+
+Once installed, you can simply run **SilenceX Pro** from your desktop icon like any other software!
+
+---
+*Professional Video Engineering by Umar S.*

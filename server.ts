@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { spawn } from 'child_process';
+import { WebSocketServer, WebSocket } from 'ws';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +13,44 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  const server = http.createServer(app);
+  const wss = new WebSocketServer({ server });
+
+  const connections = new Set<{ ws: WebSocket; type: 'host' | 'client' }>();
+
+  wss.on('connection', (ws) => {
+    let connType: 'host' | 'client' | null = null;
+
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        if (data.type === 'register-host') {
+          connections.add({ ws, type: 'host' });
+          console.log('Premiere Pro Host Connected via WS');
+        } else if (data.type === 'register-client') {
+          connections.add({ ws, type: 'client' });
+          console.log('Standalone UI Client Connected via WS');
+        } else if (data.type === 'eval') {
+          [...connections].filter(c => c.type === 'host').forEach(c => {
+            c.ws.send(JSON.stringify({ type: 'eval', script: data.script, id: data.id }));
+          });
+        } else if (data.type === 'eval-result') {
+          [...connections].filter(c => c.type === 'client').forEach(c => {
+            c.ws.send(JSON.stringify({ type: 'result', data: data.data, id: data.id }));
+          });
+        }
+      } catch (e) {
+        console.error('WS Message Error:', e);
+      }
+    });
+
+    ws.on('close', () => {
+      [...connections].forEach(c => {
+        if (c.ws === ws) connections.delete(c);
+      });
+    });
+  });
 
   app.use(express.json());
 
@@ -91,7 +131,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`SilenceX Server running on http://localhost:${PORT}`);
   });
 }

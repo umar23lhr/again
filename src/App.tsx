@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { bridge } from './bridge';
 import { 
   Scissors, 
   Settings2, 
@@ -161,19 +162,13 @@ export default function App() {
       showNotification(message);
     };
 
-    if (typeof (window as any).CSInterface !== 'undefined' && typeof (window as any).CSInterface === 'function') {
-      try {
-        const cs = new (window as any).CSInterface();
-        cs.evalScript(`silenceX.applyCuts('${JSON.stringify(segments)}')`, (res: any) => {
-          finish(res || 'Timeline successfully cleaned');
-        });
-      } catch (e) {
-        console.error("CSInterface Error:", e);
-        finish('Bridge connection failed');
+    bridge.evalScript(`silenceX.applyCuts('${JSON.stringify(segments)}')`, (res: any) => {
+      if (res === 'simulation-ok') {
+        finish('Simulation: Timeline cleaned');
+      } else {
+        finish(res || 'Timeline successfully cleaned');
       }
-    } else {
-      setTimeout(() => finish('Simulation: Timeline cleaned'), 1500);
-    }
+    });
   };
 
   const removeSegment = (id: string) => {

@@ -6,7 +6,7 @@
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
-			<Host Name="PPRO" Version="14.0" />
+			<Host Name="PPRO" Version="[14.0,99.9]" />
 		</HostList>
 		<LocaleList>
 			<Locale Code="All" />
@@ -34,12 +34,12 @@
 					<Menu>SilenceX by US</Menu>
 					<Geometry>
 						<Size>
-							<Width>400</Width>
-							<Height>600</Height>
+							<Width>1050</Width>
+							<Height>750</Height>
 						</Size>
 						<MinSize>
-							<Width>300</Width>
-							<Height>400</Height>
+							<Width>800</Width>
+							<Height>600</Height>
 						</MinSize>
 					</Geometry>
 				</UI>

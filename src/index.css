@@ -1,20 +1,19 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 @theme {
-  --color-bg-panel: #222222;
-  --color-bg-app: #161616;
-  --color-bg-waveform: #0f0f0f;
-  --color-accent: #3a8dff;
-  --color-danger: #e24c4c;
-  --color-text-main: #e0e0e0;
-  --color-text-muted: #959595;
-  --color-border-main: #333333;
-  --font-sans: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  --color-bg-deep: #0f1115;
+  --color-indigo-primary: #6366f1;
+  --color-purple-primary: #a855f7;
+  --color-glass-bg: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
-  background-color: var(--color-bg-app);
-  color: var(--color-text-main);
+  background-color: var(--color-bg-deep);
+  color: #ffffff;
   color-scheme: dark;
 }
 
@@ -25,12 +24,28 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Range Input Styling for Geometric Balance */
+.frosted-glass {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-glass-border);
+}
+
+.gradient-indigo-purple {
+  background: linear-gradient(135deg, var(--color-indigo-primary), var(--color-purple-primary));
+}
+
+.text-indigo-glow {
+  color: var(--color-indigo-primary);
+  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+/* Custom Range Input for Frosted Glass Theme */
 input[type="range"] {
   appearance: none;
-  background: #444;
+  background: rgba(255, 255, 255, 0.1);
   height: 4px;
-  border-radius: 2px;
+  border-radius: 999px;
   outline: none;
 }
 
@@ -39,7 +54,14 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #3a8dff;
+  background: #ffffff;
   cursor: pointer;
-  border: none;
+  border: 2px solid var(--color-indigo-primary);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: var(--color-indigo-primary);
 }

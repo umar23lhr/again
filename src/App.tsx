@@ -5,26 +5,30 @@ import {
   Settings2, 
   VolumeX, 
   Play, 
-  History, 
+  Trash2,
+  History as HistoryIcon,
   CheckCircle2, 
   AlertCircle,
   Loader2,
-  Import,
-  Waves
+  Waves,
+  Zap,
+  Activity,
+  User
 } from 'lucide-react';
 
 interface SilenceSegment {
+  id: string;
   start: number;
   end: number;
 }
 
 export default function App() {
-  const [threshold, setThreshold] = useState(-42);
+  const [threshold, setThreshold] = useState(-35);
   const [minDuration, setMinDuration] = useState(0.5);
-  const [padding, setPadding] = useState(0.15);
-  const [status, setStatus] = useState<'idle' | 'analyzing' | 'complete'>('idle');
+  const [status, setStatus] = useState<'idle' | 'analyzing' | 'cutting'>('idle');
   const [segments, setSegments] = useState<SilenceSegment[]>([]);
   const [progress, setProgress] = useState(0);
+  const [notification, setNotification] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Mock Waveform Data
@@ -59,80 +63,57 @@ export default function App() {
     
     ctx.clearRect(0, 0, width, height);
 
-    // Grid Background (Subtle)
-    ctx.strokeStyle = '#222';
+    // Subtle Hardware Grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < width; i += 80) {
+    for (let i = 0; i < width; i += 40) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, height);
       ctx.stroke();
     }
 
-    // Waveform - Simple Bars per theme aesthetic
-    const barsCount = 80;
-    const barWidth = width / barsCount;
-    const padding = 2;
+    // Waveform
+    const step = width / (waveformData.length || 1);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+    ctx.lineWidth = 1.5;
     
-    ctx.fillStyle = '#444';
-    for (let i = 0; i < barsCount; i++) {
-        const val = waveformData[Math.floor(i * (waveformData.length / barsCount))] || 0.1;
-        const h = val * (height * 0.6);
-        const x = i * barWidth + padding;
-        const y = (height - h) / 2;
-        
-        // Check if this bar is in a silence segment
-        const timeAtBar = (i / barsCount) * 20;
-        const isSilent = segments.some(s => timeAtBar >= s.start && timeAtBar <= s.end);
-        
-        ctx.fillStyle = isSilent ? '#666' : '#444';
-        ctx.fillRect(x, y, barWidth - padding * 2, h);
-    }
+    waveformData.forEach((val, i) => {
+      const x = i * step;
+      const h = val * (height * 0.7);
+      ctx.moveTo(x, (height - h) / 2);
+      ctx.lineTo(x, (height + h) / 2);
+    });
+    ctx.stroke();
 
-    // Silence Masks (RED)
+    // Gap Overlays (RED)
     segments.forEach(seg => {
       const xStart = (seg.start / 20) * width;
       const xEnd = (seg.end / 20) * width;
       const maskWidth = xEnd - xStart;
 
-      ctx.fillStyle = 'rgba(226, 76, 76, 0.25)';
-      ctx.fillRect(xStart, height * 0.1, maskWidth, height * 0.8);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.fillRect(xStart, 0, maskWidth, height);
       
-      ctx.strokeStyle = '#e24c4c';
+      ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(xStart, height * 0.1);
-      ctx.lineTo(xStart, height * 0.9);
+      ctx.moveTo(xStart, 0); ctx.lineTo(xStart, height);
+      ctx.moveTo(xEnd, 0); ctx.lineTo(xEnd, height);
       ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(xEnd, height * 0.1);
-      ctx.lineTo(xEnd, height * 0.9);
-      ctx.stroke();
-
-      // Label "SILENCE" - manually drawn to match CSS aesthetic
-      ctx.font = 'bold 10px Helvetica Neue';
-      ctx.fillStyle = '#e24c4c';
-      ctx.textAlign = 'center';
-      ctx.letterSpacing = '2px';
-      ctx.fillText('SILENCE', xStart + maskWidth / 2, height * 0.1 - 5);
     });
-
-    // Playhead line
-    ctx.strokeStyle = '#3a8dff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(width * 0.45, 0);
-    ctx.lineTo(width * 0.45, height);
-    ctx.stroke();
   };
 
-  const [notification, setNotification] = useState<string | null>(null);
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   const handleAnalyze = async () => {
     setStatus('analyzing');
     setProgress(0);
     setSegments([]);
-    setNotification(null);
     
     const interval = setInterval(() => {
       setProgress(prev => Math.min(prev + 5, 95));
@@ -145,189 +126,336 @@ export default function App() {
         body: JSON.stringify({ threshold, duration: minDuration })
       });
       const data = await response.json();
-      setSegments(data.segments);
+      const mappedSegments = data.segments.map((s: any, idx: number) => ({
+        id: `GAP-${idx + 1}`,
+        start: s.start,
+        end: s.end
+      }));
+      setSegments(mappedSegments);
       setProgress(100);
-      setStatus('complete');
-      showNotification(`Detected ${data.segments.length} silent gaps`);
+      setStatus('idle');
+      showNotification(`Found ${mappedSegments.length} segments`);
     } catch (error) {
       console.error(error);
       setStatus('idle');
-      showNotification('Analysis failed');
+      showNotification('Scan failed');
     } finally {
       clearInterval(interval);
     }
   };
 
-  const showNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 4000);
-  };
-
   const handleApply = () => {
     if (segments.length === 0) return;
-    
-    setStatus('analyzing'); // Show processing state
-    
-    // Call Adobe Bridge
-    if (typeof (window as any).CSInterface !== 'undefined') {
-      const cs = new (window as any).CSInterface();
-      const segmentsJson = JSON.stringify(segments);
-      
-      cs.evalScript(`silenceX.applyCuts('${segmentsJson}')`, (res: any) => {
-        setStatus('idle');
-        setSegments([]); // Clear segments after successful application
-        showNotification(res || 'Cuts applied successfully');
-      });
+    setStatus('cutting');
+    setProgress(0);
+
+    const interval = setInterval(() => {
+      setProgress(prev => Math.min(prev + 10, 90));
+    }, 100);
+
+    const finish = (message: string) => {
+      clearInterval(interval);
+      setProgress(100);
+      setStatus('idle');
+      setSegments([]);
+      showNotification(message);
+    };
+
+    if (typeof (window as any).CSInterface !== 'undefined' && typeof (window as any).CSInterface === 'function') {
+      try {
+        const cs = new (window as any).CSInterface();
+        cs.evalScript(`silenceX.applyCuts('${JSON.stringify(segments)}')`, (res: any) => {
+          finish(res || 'Timeline successfully cleaned');
+        });
+      } catch (e) {
+        console.error("CSInterface Error:", e);
+        finish('Bridge connection failed');
+      }
     } else {
-      // Fallback for browser demo
-      setTimeout(() => {
-        setStatus('idle');
-        setSegments([]);
-        showNotification('Simulation: Multi-track cuts applied');
-      }, 1000);
+      setTimeout(() => finish('Simulation: Timeline cleaned'), 1500);
     }
   };
 
+  const removeSegment = (id: string) => {
+    setSegments(prev => prev.filter(s => s.id !== id));
+  };
+
+  const totalSavings = segments.reduce((acc, s) => acc + (s.end - s.start), 0).toFixed(1);
+
   return (
-    <div className="flex flex-col h-screen bg-[#161616] text-[#e0e0e0] font-sans selection:bg-[#3a8dff]/30 overflow-hidden">
-      {/* Notification Toast */}
+    <div className="flex flex-col h-screen bg-[#0f1115] text-white font-sans overflow-hidden selection:bg-indigo-500/30">
+      
+      {/* 1. Header Panel */}
+      <header className="h-[70px] bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.05] flex items-center justify-between px-8 shrink-0 z-40">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 gradient-indigo-purple rounded-xl flex items-center justify-center font-black text-white shadow-xl shadow-indigo-500/20">
+            SX
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight">SilenceX</h1>
+            <p className="text-[10px] tracking-wider font-bold text-indigo-400 flex items-center gap-1.5 opacity-80">
+              by Umar S.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-white/[0.03] border border-white/[0.05] rounded-full text-[10px] font-mono text-white/40">
+            v1.4 BUILD
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* 2. Left Control Sidebar (The Engine Room) */}
+        <aside className="w-[340px] bg-white/[0.01] border-r border-white/[0.03] p-8 flex flex-col gap-10 overflow-y-auto shrink-0 frosted-glass z-30">
+          
+          <section className="space-y-8">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings2 className="w-4 h-4 text-indigo-400" />
+              <h2 className="text-[11px] font-black uppercase tracking-[2px] text-white/40">Detection Tuning</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-end">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-white/60">Threshold Level</label>
+                <span className="font-mono text-xs text-purple-400 font-bold">{threshold}dB</span>
+              </div>
+              <input 
+                type="range" min="-60" max="-20" value={threshold} 
+                onChange={(e) => setThreshold(parseInt(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-end">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-white/60">Gap Minimum</label>
+                <span className="font-mono text-xs text-purple-400 font-bold">{minDuration}s</span>
+              </div>
+              <input 
+                type="range" min="0.1" max="2.0" step="0.1" value={minDuration} 
+                onChange={(e) => setMinDuration(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              {['LOW', 'MED', 'HIGH'].map(p => (
+                <button 
+                  key={p} 
+                  onClick={() => setThreshold(p === 'LOW' ? -25 : p === 'MED' ? -35 : -50)}
+                  className="flex-1 py-2 rounded-lg bg-white/5 border border-white/5 text-[10px] font-black tracking-widest hover:bg-white/10 transition-all font-mono"
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-auto space-y-4">
+            <button 
+              onClick={handleAnalyze} 
+              disabled={status !== 'idle'}
+              className="w-full py-4 rounded-xl border border-white/10 text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              <Activity className="w-4 h-4" />
+              Scan Silence
+            </button>
+            <button 
+              onClick={handleApply}
+              disabled={segments.length === 0 || status !== 'idle'}
+              className="w-full py-5 rounded-xl gradient-indigo-purple text-xs font-black uppercase tracking-widest shadow-2xl shadow-indigo-600/40 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-20"
+            >
+              <Scissors className="w-5 h-5" />
+              Auto-Cut & Ripple Delete
+            </button>
+          </section>
+        </aside>
+
+        {/* 3. Central Analysis Pane (The Live View) */}
+        <main className="flex-1 flex flex-col bg-black/20 overflow-hidden">
+          
+          <div className="p-8 pb-0 flex items-center justify-between z-10 shrink-0">
+             <div>
+                <h3 className="text-xl font-bold">Sequence-01 <span className="text-white/20 font-medium">/ Analysis</span></h3>
+                <p className="text-[10px] uppercase font-bold text-white/40 mt-1 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  Real-time Scan Buffer
+                </p>
+             </div>
+             <div className="bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 rounded-xl flex items-center gap-3">
+                <Scissors className="w-4 h-4 text-indigo-400" />
+                <div>
+                   <p className="text-[9px] font-black tracking-widest text-indigo-400">ESTIMATED SAVINGS</p>
+                   <p className="text-sm font-black font-mono">-{totalSavings}s</p>
+                </div>
+             </div>
+          </div>
+
+          <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+            
+            {/* Waveform Card */}
+            <div className="h-[240px] bg-[#15181e] rounded-[32px] border border-white/[0.03] shadow-2xl relative overflow-hidden shrink-0 group">
+              <canvas ref={canvasRef} className="w-full h-full opacity-60" />
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#15181e] via-transparent to-transparent opacity-50" />
+              
+              <div className="absolute top-4 left-6 flex items-center gap-2">
+                 <Waves className="w-3 h-3 text-indigo-500" />
+                 <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Frequency Spectrum</span>
+              </div>
+            </div>
+
+            {/* Detections Table */}
+            <div className="space-y-4 pb-8">
+              <div className="flex items-center gap-3 mb-6">
+                <HistoryIcon className="w-4 h-4 text-purple-400" />
+                <h4 className="text-[11px] font-black uppercase tracking-widest text-white/40">Detection Log</h4>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-4">
+                <span>ID</span>
+                <span>In-Point</span>
+                <span>Duration</span>
+                <span className="text-right">Action</span>
+              </div>
+
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {segments.map((s, i) => (
+                    <motion.div 
+                      key={s.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="grid grid-cols-4 gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-all items-center"
+                    >
+                      <span className="font-mono text-xs text-indigo-400 font-bold">{s.id}</span>
+                      <span className="font-mono text-xs text-white/60">00:00:{s.start.toFixed(2)}</span>
+                      <span className="font-mono text-xs text-purple-400">{(s.end - s.start).toFixed(2)}s</span>
+                      <div className="flex justify-end">
+                        <button 
+                          onClick={() => removeSegment(s.id)}
+                          className="px-3 py-1 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          REMOVE
+                        </button>
+                      </div>
+                    </motion.div>
+                  )).reverse()}
+                </AnimatePresence>
+                
+                {segments.length === 0 && (
+                  <div className="h-40 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center gap-4 text-white/20">
+                    <Activity className="w-8 h-8 opacity-20" />
+                    <p className="text-[10px] font-black uppercase tracking-widest italic">Waiting for analysis scan...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* 4. Interactive Footer */}
+      <footer className="h-[60px] bg-black/40 backdrop-blur-3xl border-t border-white/[0.05] flex items-center px-8 justify-between relative z-40 overflow-hidden">
+        
+        {/* Progress Bar Background */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/5">
+           <motion.div 
+              className="h-full gradient-indigo-purple"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+           />
+        </div>
+
+        <div className="flex items-center gap-10">
+          <div className="flex items-center gap-3">
+            <div className={`w-2.5 h-2.5 rounded-full shadow-lg ${status === 'analyzing' ? 'bg-indigo-500 shadow-indigo-500/40 animate-pulse' : status === 'cutting' ? 'bg-orange-500 shadow-orange-500/40 animate-spin' : 'bg-green-500 shadow-green-500/40'}`} />
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/50">
+              {status === 'analyzing' ? 'Analyzing Audio Data...' : status === 'cutting' ? 'Processing Timeline...' : `Ready • Detected ${segments.length} gaps`}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+           <div className="w-[200px] h-1 bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-indigo-500" 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+              />
+           </div>
+           <span className="text-[10px] font-mono font-bold text-indigo-400">{progress}%</span>
+        </div>
+      </footer>
+
+      {/* 5. Immersion Processing Overlay */}
+      <AnimatePresence>
+        {(status === 'analyzing' || status === 'cutting') && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] backdrop-blur-3xl bg-black/60 flex items-center justify-center"
+          >
+            <div className="w-[400px] p-10 frosted-glass rounded-[40px] text-center space-y-8 shadow-[0_0_100px_rgba(99,102,241,0.2)]">
+               <div className="relative">
+                  <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full" />
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                    className="w-24 h-24 rounded-full border-t-2 border-indigo-500 border-r-2 border-r-transparent mx-auto flex items-center justify-center"
+                  >
+                    <Zap className="w-10 h-10 text-indigo-500 fill-indigo-500 animate-bounce" />
+                  </motion.div>
+               </div>
+
+               <div className="space-y-3">
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">
+                    {status === 'analyzing' ? 'Scanning Frequencies' : 'Executing Ripple Cut'}
+                  </h2>
+                  <p className="text-[10px] font-black tracking-widest text-white/30 uppercase">
+                    Interacting with Premiere Pro Host API...
+                  </p>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="text-4xl font-black font-mono text-indigo-400">{progress}%</div>
+                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden p-[1px]">
+                     <motion.div 
+                        className="h-full gradient-indigo-purple rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                     />
+                  </div>
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Background Decor */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-indigo-500/[0.05] blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-purple-500/[0.05] blur-[150px] rounded-full" />
+      </div>
+
+      {/* Header Notification */}
       <AnimatePresence>
         {notification && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] bg-[#3a8dff] text-white px-6 py-3 rounded-full shadow-2xl font-bold text-sm flex items-center gap-3"
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] gradient-indigo-purple text-white px-8 py-3 rounded-full shadow-2xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3"
           >
             <CheckCircle2 className="w-4 h-4" />
             {notification}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Geometric Balance Header */}
-      <header className="h-[60px] bg-[#222222] border-b border-[#333333] flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-[#3a8dff] to-[#1e4d8b] rounded-[6px] grid place-items-center text-white font-bold text-sm">
-            SX
-          </div>
-          <div className="text-lg font-semibold tracking-wide">SilenceX by US</div>
-        </div>
-        <div className="text-[11px] uppercase tracking-[1px] text-[#3a8dff] border border-[#3a8dff] px-2.5 py-1 rounded-full">
-          Sequence: Podcast_Ep12_Final
-        </div>
-      </header>
-
-      {/* Main Layout Container */}
-      <main className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-[320px] bg-[#222222] border-r border-[#333333] p-6 flex flex-col gap-8 overflow-y-auto shrink-0">
-          <button className="bg-[#333] hover:brightness-125 transition-all text-white border border-[#444] py-3 rounded-[6px] font-semibold text-sm">
-            Import Active Sequence
-          </button>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center text-[13px] font-medium text-[#959595]">
-              <label>Silence Threshold</label>
-              <span className="font-mono text-[#3a8dff]">{threshold}dB</span>
-            </div>
-            <input 
-              type="range" min="-60" max="-20" value={threshold} 
-              onChange={(e) => setThreshold(parseInt(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center text-[13px] font-medium text-[#959595]">
-              <label>Min Silence Duration</label>
-              <span className="font-mono text-[#3a8dff]">{minDuration.toFixed(2)}s</span>
-            </div>
-            <input 
-              type="range" min="0.1" max="2.0" step="0.1" value={minDuration} 
-              onChange={(e) => setMinDuration(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center text-[13px] font-medium text-[#959595]">
-              <label>Padding (In/Out)</label>
-              <span className="font-mono text-[#3a8dff]">{padding.toFixed(2)}s</span>
-            </div>
-            <input 
-              type="range" min="0" max="0.5" step="0.05" value={padding} 
-              onChange={(e) => setPadding(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex-1" />
-
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={handleAnalyze}
-              disabled={status === 'analyzing'}
-              className="bg-[#3a8dff] hover:brightness-110 text-white py-3 rounded-[6px] font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {status === 'analyzing' && <Loader2 className="w-4 h-4 animate-spin" />}
-              {status === 'analyzing' ? 'Analyzing...' : 'Analyze Waveform'}
-            </button>
-            <button 
-              onClick={handleApply}
-              disabled={segments.length === 0 || status === 'analyzing'}
-              className="bg-[#333] hover:brightness-110 border border-[#e24c4c] text-[#e24c4c] py-3 rounded-[6px] font-semibold text-sm transition-all disabled:opacity-50"
-            >
-              Apply & Ripple Cut
-            </button>
-          </div>
-        </aside>
-
-        {/* Content Area */}
-        <section className="flex-1 flex flex-col bg-[#0f0f0f] relative overflow-hidden">
-          <div className="flex-1 relative p-5 flex items-center justify-center">
-            <canvas ref={canvasRef} className="w-full h-full" />
-            
-            <AnimatePresence>
-              {status === 'analyzing' && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-50"
-                >
-                  <div className="w-64 h-1 bg-[#222] rounded-full overflow-hidden mb-4">
-                    <motion.div 
-                      className="h-full bg-[#3a8dff]"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="text-[10px] uppercase tracking-[2px] font-bold text-[#3a8dff]">Scanning Frequencies... {progress}%</div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Timeline Ruler */}
-          <div className="h-[40px] border-t border-[#333333] relative shrink-0">
-             {[0, 20, 40, 60, 80].map((left) => (
-               <React.Fragment key={left}>
-                 <div className="absolute top-0 w-px h-2 bg-[#444]" style={{ left: `${left + 10}%` }} />
-                 <span className="absolute top-4 font-mono text-[10px] text-[#666]" style={{ left: `${left + 10}%` }}>
-                   00:00:{left < 10 ? '0' : ''}{left/2}:00
-                 </span>
-               </React.Fragment>
-             ))}
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="h-[50px] bg-[#222222] border-t border-[#333333] flex items-center justify-between px-6 shrink-0 text-[12px] text-[#959595]">
-        <div>{segments.length > 0 ? `${segments.length} gaps detected (32.4s total)` : '0 gaps detected'}</div>
-        <div>v1.0.0 | Ready</div>
-      </footer>
     </div>
   );
 }

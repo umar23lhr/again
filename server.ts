@@ -132,7 +132,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`SilenceX Server running on http://localhost:${PORT}`);
+    console.log(`[SilenceX] Core Engine Active - Port ${PORT}`);
   });
 }
 

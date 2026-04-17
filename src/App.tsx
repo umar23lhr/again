@@ -30,6 +30,8 @@ export default function App() {
   const [segments, setSegments] = useState<SilenceSegment[]>([]);
   const [progress, setProgress] = useState(0);
   const [notification, setNotification] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [bridgeUrl, setBridgeUrl] = useState(localStorage.getItem('silencex_bridge_host') || '');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Mock Waveform Data
@@ -175,6 +177,16 @@ export default function App() {
     setSegments(prev => prev.filter(s => s.id !== id));
   };
 
+  const saveSettings = () => {
+    if (bridgeUrl) {
+      localStorage.setItem('silencex_bridge_host', bridgeUrl);
+    } else {
+      localStorage.removeItem('silencex_bridge_host');
+    }
+    showNotification("Bridge settings saved. Please reload.");
+    setShowSettings(false);
+  };
+
   const totalSavings = segments.reduce((acc, s) => acc + (s.end - s.start), 0).toFixed(1);
 
   return (
@@ -194,6 +206,15 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+           {/* Bridge Settings Button */}
+           <button 
+             onClick={() => setShowSettings(true)}
+             className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-indigo-400"
+             title="Bridge Settings"
+           >
+             <Settings2 className="w-5 h-5" />
+           </button>
+           
           <div className="px-3 py-1 bg-white/[0.03] border border-white/[0.05] rounded-full text-[10px] font-mono text-white/40">
             v1.4 BUILD
           </div>
@@ -448,6 +469,59 @@ export default function App() {
           >
             <CheckCircle2 className="w-4 h-4" />
             {notification}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bridge Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-md bg-[#15181e] border border-white/10 rounded-[32px] p-8 space-y-6 shadow-2xl">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-indigo-400" />
+                  Bridge Connectivity
+                </h3>
+                <p className="text-xs text-white/40 leading-relaxed">
+                  Point your extension to a remote SilenceX server (e.g. your cloud URL). 
+                  Leave blank to use the default local connection.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20">Server Host / URL</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. silencex-pro.run.app"
+                    value={bridgeUrl}
+                    onChange={(e) => setBridgeUrl(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={() => setShowSettings(false)}
+                  className="flex-1 py-3 rounded-xl border border-white/5 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all font-mono"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveSettings}
+                  className="flex-1 py-3 rounded-xl gradient-indigo-purple text-[11px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:brightness-110 transition-all font-mono"
+                >
+                  Save & Apply
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

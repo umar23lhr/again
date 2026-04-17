@@ -35,8 +35,8 @@ if not exist "node_modules" (
 )
 
 :: 4. Start the app
-echo [STATUS] SilenceX is now running!
-echo [URL] Open: http://localhost:3000
+echo [STATUS] SilenceX is now active!
+echo [URL] Connect via your local server or Cloud Bridge URL.
 echo.
 echo [!] Keep this window open while using the software.
 echo ==========================================

@@ -20,18 +20,19 @@ SilenceX is now structured as professional standalone software that communicates
 3.  Restart Premiere Pro.
 
 ### Step B: Launch the Software
-1.  Navigate to your SilenceX folder.
-2.  Double-click **`START_SILENCEX.bat`**. This will check for Node.js/FFmpeg and start the engine.
-3.  Once the terminal says "Server running", open your browser to:
-    `http://localhost:3000`
+1.  **Cloud Mode (Recommended)**: Use your public SilenceX URL (e.g. from AI Studio).
+2.  **Local Mode**: Double-click **`START_SILENCEX.bat`**. This will start the engine on your machine.
 
 ---
 
-## 3. Connecting to Premiere
-*   Open Premiere Pro.
-*   Go to **Window > Extensions > SilenceX**. 
-*   *Note: Even if the panel looks blank inside Premiere, its "Heart" (the bridge) is now beating. It will automatically connect to the Standalone Software running in your browser.*
-*   Now, when you click **"Scan Silence"** or **"Auto-Cut"** in your browser window, Premiere will execute the commands instantly.
+## 3. Remote / Cloud Connectivity (Non-Localhost)
+SilenceX is designed to work perfectly without `localhost`. If you want to use the high-performance Cloud UI to control your local Premiere Pro:
+
+1.  Open **SilenceX** in your browser (e.g. the AI Studio URL).
+2.  Click the **Settings (Gear Icon)** in the header.
+3.  Enter your custom Cloud URL (e.g. `silencex-pro.run.app`).
+4.  Open the extension in Premiere Pro and do the same in its settings.
+5.  **Synchronization**: Your local Premiere Pro will now receive commands directly from the cloud server!
 
 ---
 

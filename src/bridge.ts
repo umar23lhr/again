@@ -19,10 +19,18 @@ class SilenceXBridge {
 
   private initWebSocket() {
     try {
-      // Robust protocol detection: Replace 'http' with 'ws' (handles http -> ws and https -> wss)
       const protocol = window.location.protocol.startsWith('https') ? 'wss:' : 'ws:';
-      const host = window.location.host || 'localhost:3000';
-      const wsUrl = `${protocol}//${host}`;
+      
+      // Check for saved bridge URL or default to current host
+      const savedHost = localStorage.getItem('silencex_bridge_host');
+      const host = savedHost || window.location.host;
+      
+      if (!host) {
+        console.warn("[SilenceX] No host detected for UI Bridge. Defaulting to local discovery.");
+        return;
+      }
+
+      const wsUrl = host.startsWith('ws') ? host : `${protocol}//${host}`;
       
       console.log(`[SilenceX] Initializing UI Bridge: ${wsUrl}`);
       this.ws = new WebSocket(wsUrl);
@@ -55,8 +63,12 @@ class SilenceXBridge {
   private initHostListener() {
     try {
       const protocol = window.location.protocol.startsWith('https') ? 'wss:' : 'ws:';
-      const host = window.location.host || 'localhost:3000';
-      const wsUrl = `${protocol}//${host}`;
+      
+      // For CEP, we MUST allow the user to point to a remote server (like AI Studio)
+      const savedHost = localStorage.getItem('silencex_bridge_host');
+      const host = savedHost || window.location.host || 'localhost:3000';
+      
+      const wsUrl = host.startsWith('ws') ? host : `${protocol}//${host}`;
       
       console.log(`[SilenceX] Initializing Host Bridge: ${wsUrl}`);
       const hostWs = new WebSocket(wsUrl);
